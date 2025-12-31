@@ -1,0 +1,38 @@
+# Environment variables (contains sensitive credentials)
+.env
+
+# Gmail API credentials and tokens (v3.0)
+credentials.json
+tokens/
+
+# Python virtual environment
+venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# State files (UIDL tracking)
+state/
+
+# Backup files (email archives)
+backup/
+
+# Log files
+logs/
+*.log
+
+# IDE settings
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
