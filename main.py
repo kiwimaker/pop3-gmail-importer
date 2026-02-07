@@ -592,6 +592,10 @@ def process_account(account_num):
 
                 processed_count += 1
 
+            except poplib.error_proto as e:
+                logging.error(f"Account {account_num}: POP3 protocol error on message {msg_num}: {e}")
+                logging.warning(f"Account {account_num}: Connection corrupted, will retry remaining messages next loop")
+                break
             except Exception as e:
                 import traceback
                 logging.error(f"Account {account_num}: Error processing message {msg_num}: {e}")
