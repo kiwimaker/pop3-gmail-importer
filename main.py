@@ -434,6 +434,7 @@ def process_account(account_num):
         'gmail_token_file': os.getenv(f"{prefix}GMAIL_TOKEN_FILE"),
         'gmail_target_email': os.getenv(f"{prefix}GMAIL_TARGET_EMAIL"),
         'gmail_label_ids': [l.strip() for l in os.getenv(f"{prefix}GMAIL_LABEL_IDS", '').split(',') if l.strip()],
+        'skip_existing': get_env_bool(f"{prefix}SKIP_EXISTING", False),
         'delete_after_forward': get_env_bool(f"{prefix}DELETE_AFTER_FORWARD", False),
         'backup_enabled': get_env_bool(f"{prefix}BACKUP_ENABLED", True),
         'backup_dir': os.getenv(f"{prefix}BACKUP_DIR"),
@@ -486,6 +487,15 @@ def process_account(account_num):
         # Load UIDL state
         state_dir = 'state'
         uidl_state = load_uidl_state(account_num, state_dir)
+
+        # Skip existing: on first run, mark all current messages as processed
+        if config['skip_existing'] and len(uidl_state) == 0:
+            logging.info(f"Account {account_num}: SKIP_EXISTING enabled, marking {len(uidl_dict)} existing messages as processed")
+            for msg_num, uidl in uidl_dict.items():
+                save_uidl_record(account_num, state_dir, uidl, config['gmail_target_email'], None)
+            pop3.quit()
+            logging.info(f"Account {account_num}: All existing messages marked. New messages will be imported from next loop.")
+            return
 
         # Filter unprocessed messages
         unprocessed = []

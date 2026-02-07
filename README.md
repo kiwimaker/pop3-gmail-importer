@@ -142,6 +142,9 @@ ACCOUNT1_GMAIL_TOKEN_FILE=tokens/token_account1.json       # Token storage
 ACCOUNT1_GMAIL_TARGET_EMAIL=your-gmail@gmail.com           # Import destination
 ACCOUNT1_GMAIL_LABEL_IDS=Label_123456                      # Optional: Gmail label IDs
 
+# Skip Existing
+ACCOUNT1_SKIP_EXISTING=false         # false: import all, true: only new emails
+
 # Deletion Settings
 ACCOUNT1_DELETE_AFTER_FORWARD=false   # Debug: false, Production: true
 
@@ -160,6 +163,8 @@ ACCOUNT1_BACKUP_RETENTION_DAYS=90
     ACCOUNT1_GMAIL_TOKEN_FILE=tokens/token_gmail_a.json
     ACCOUNT3_GMAIL_TOKEN_FILE=tokens/token_gmail_a.json
     ```
+- **SKIP_EXISTING=false**: Import all existing emails on first run (default)
+- **SKIP_EXISTING=true**: Skip existing emails on first run, only import new ones going forward. Only takes effect on the first run (when no UIDL state exists). Useful when you don't want to import historical emails.
 - **DELETE_AFTER_FORWARD=false**: Debug mode - process only latest 5 emails, don't delete from server
 - **DELETE_AFTER_FORWARD=true**: Production mode - delete from POP3 server after successful import
 
