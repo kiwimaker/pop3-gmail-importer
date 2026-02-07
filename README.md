@@ -1,286 +1,324 @@
 # POP3 to Gmail Importer v3.0
 
-複数のPOP3アカウントからGmail APIを使用してGmailに直接メールをインポートする、本番環境対応のメールインポートデーモンです。Gmail APIのネイティブインポート機能を使用することで、SPF/DKIM/DMARCの問題を完全に回避します。
+A production-ready email import daemon that imports emails from multiple POP3 accounts directly into Gmail using the Gmail API. By using Gmail API's native import functionality, this completely avoids SPF/DKIM/DMARC issues.
 
-## v3.0の新機能
+## What's New in v3.0
 
-- **Gmail API統合**: `messages.import()` APIを使用した直接メールインポート
-- **SMTP問題の解消**: SPF/DKIM/DMARC検証失敗を完全に回避
-- **Gmail標準処理**: インポートされたメールはGmailのスパムフィルタと受信トレイ分類を経由
-- **OAuth 2.0認証**: 安全なトークンベース認証
-- **元のメール保持**: すべてのヘッダー、添付ファイル、メタデータを完全に保持
-- **未読・受信トレイ配置**: `labelIds`指定により、メールが未読状態で受信トレイに配置される
+- **Gmail API Integration**: Direct email import using `messages.import()` API
+- **SMTP Issues Eliminated**: Completely bypasses SPF/DKIM/DMARC validation failures
+- **Gmail Native Processing**: Imported emails go through Gmail's spam filter and inbox classification
+- **OAuth 2.0 Authentication**: Secure token-based authentication
+- **Original Email Preservation**: Completely retains all headers, attachments, and metadata
+- **Unread & Inbox Placement**: `labelIds` specification ensures emails are placed in inbox as unread
 
-## 機能
+## Features
 
-- **複数アカウント対応**: 最大5つのPOP3アカウントから複数のGmailアカウントへインポート
-- **Gmail APIインポート**: `messages.import()`を使用して元のメール日付とヘッダーを保持
-- **重複防止**: UIDLベースの追跡により、クラッシュ後も重複インポートを防止
-- **自動バックアップ**: 設定可能な保持期間でメールアーカイブをオプション提供
-- **安全な接続**: 証明書検証付きのPOP3用完全TLS/SSL対応
-- **安全なシャットダウン**: Ctrl+C割り込みをデータ損失なく安全に処理
-- **デバッグモード**: テスト用に最新5件のメールのみ処理（削除無効時）
-- **クラッシュ回復**: アトミック操作により、停電やクラッシュ時も状態を失わない
+- **Multiple Account Support**: Import from up to 5 POP3 accounts to multiple Gmail accounts
+- **Gmail API Import**: Uses `messages.import()` to preserve original email dates and headers
+- **Duplicate Prevention**: UIDL-based tracking prevents duplicate imports even after crashes
+- **Automatic Backup**: Optional email archive with configurable retention period
+- **Secure Connections**: Full TLS/SSL support for POP3 with certificate verification
+- **Safe Shutdown**: Safely handles Ctrl+C interrupts without data loss
+- **Debug Mode**: Process only the latest 5 emails for testing (when deletion disabled)
+- **Crash Recovery**: Atomic operations ensure no state loss during power outages or crashes
 
-## 必要要件
+## Requirements
 
-- **Python 3.9以上**
-- UIDL対応のPOP3メールアカウント
-- メールインポート用の**Gmailアカウント**
-- Gmail API有効化済みの**Google Cloudプロジェクト**（無料作成可能）
+- **Python 3.9 or higher**
+- POP3 email account with UIDL support
+- **Gmail account** for email import
+- **Google Cloud project** with Gmail API enabled (free to create)
 
-## クイックスタート
+## Quick Start
 
-### 1. Google Cloudセットアップ
+### 1. Google Cloud Setup
 
-プログラム実行前に、Gmail APIアクセスをセットアップする必要があります：
+Before running the program, you need to set up Gmail API access:
 
-1. [Google Cloud Console](https://console.cloud.google.com/)にアクセス
-2. 新しいプロジェクトを作成（または既存を選択）
-3. Gmail APIを有効化：
-   - 「APIとサービス」→「ライブラリ」に移動
-   - 「Gmail API」を検索して有効化
-4. OAuth 2.0認証情報を作成：
-   - 「APIとサービス」→「認証情報」に移動
-   - 「認証情報を作成」→「OAuth クライアント ID」をクリック
-   - プロンプトが表示されたらOAuth同意画面を設定：
-     - ユーザータイプ: 外部
-     - アプリ名: 「POP3 to Gmail Importer」（任意の名前）
-     - テストユーザーにGmailアドレスを追加
-     - スコープ: `https://www.googleapis.com/auth/gmail.insert`を追加
-   - アプリケーションの種類: 「デスクトップアプリ」
-   - JSONファイルをダウンロード
-5. ダウンロードしたファイルを`credentials.json`にリネーム
-6. `credentials.json`をプロジェクトルートディレクトリに配置
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project (or select existing)
+3. Enable Gmail API:
+   - Navigate to "APIs & Services" → "Library"
+   - Search for "Gmail API" and enable it
+4. Create OAuth 2.0 credentials:
+   - Navigate to "APIs & Services" → "Credentials"
+   - Click "Create Credentials" → "OAuth client ID"
+   - If prompted, configure OAuth consent screen:
+     - User Type: External
+     - App name: "POP3 to Gmail Importer" (or any name)
+     - Add your Gmail address to Test users
+     - Scope: Add `https://www.googleapis.com/auth/gmail.insert`
+   - Application type: "Desktop app"
+   - Download the JSON file
+5. Rename the downloaded file to `credentials.json`
+6. Place `credentials.json` in the project root directory
 
-### 2. 初期セットアップ
+### 2. Initial Setup
 
-1. このプロジェクトをダウンロードまたはクローン
-2. サンプル設定をコピー：
+1. Download or clone this project
+2. Copy the sample configuration:
    ```bash
    cp .env.example .env
    ```
-3. `.env`ファイルを設定で編集（設定セクションを参照）
-4. 依存関係をインストール：
+3. Edit `.env` file with your settings (see Configuration section)
+4. Install dependencies:
    ```bash
    python3 -m venv venv
    source venv/bin/activate  # Windows: venv\Scripts\activate
    pip install -r requirements.txt
    ```
 
-### 3. 接続テスト
+### 3. Test Connections
 
-接続テストプログラムを実行：
+Run the connection test program:
 
 ```bash
 python test_connection.py
 ```
 
-これにより：
-- POP3接続をテスト
-- OAuth認証を実行（初回実行時にブラウザが開きます）
-- 今後の使用のために認証トークンを保存
-- Gmail APIアクセスを検証
+This will:
+- Test POP3 connection
+- Perform OAuth authentication (browser will open on first run)
+- Save authentication tokens for future use
+- Verify Gmail API access
 
-**重要**: 初回実行時、各Gmailアカウントへのアクセス承認のためにブラウザが開きます。「許可」をクリックしてPOP3 to Gmail Importerにメールインポート権限を付与してください。
+**Important**: On first run, a browser will open for each Gmail account to authorize access. Click "Allow" to grant POP3 to Gmail Importer permission to import emails.
 
-### 4. 実行
+### 4. Run
 
-メールインポーターを開始：
+Start the email importer:
 
 ```bash
 python main.py
 ```
 
-プログラムは以下を実行します：
-- 5分ごとに新しいメールをチェック（設定変更可能）
-- Gmail APIを介して新しいメールをインポート
-- ローカルバックアップを保存（有効時）
-- すべてのアクティビティを`logs/pop3_gmail_importer.log`に記録
+The program will:
+- Check for new emails every 5 minutes (configurable)
+- Import new emails via Gmail API
+- Save local backups (if enabled)
+- Log all activity to `logs/pop3_gmail_importer.log`
 
-### 5. 停止
+### 5. Stop
 
-`Ctrl+C`を押してプログラムを安全に停止します。インポーターは終了前に現在のメール処理を完了します。
+Press `Ctrl+C` to safely stop the program. The importer will complete processing the current email before exiting.
 
-## 設定
+## Configuration
 
-`.env`ファイルを編集してメールアカウントを設定します。
+Edit the `.env` file to configure your email accounts.
 
-### グローバル設定
+### Global Settings
 
 ```bash
-ACCOUNT_COUNT=5              # 設定するアカウント数（1-5）
-CHECK_INTERVAL=300           # チェック間隔（秒）（300 = 5分）
-MAX_EMAILS_PER_LOOP=100      # アカウントごとの1ループあたりの最大処理メール数
+ACCOUNT_COUNT=5              # Number of accounts to configure (1-5)
+CHECK_INTERVAL=300           # Check interval in seconds (300 = 5 minutes)
+MAX_EMAILS_PER_LOOP=100      # Max emails to process per account per loop
 
-# ログ設定
+# Log Settings
 LOG_LEVEL=INFO               # DEBUG, INFO, WARNING, ERROR
 LOG_FILE=logs/pop3_gmail_importer.log
-LOG_MAX_BYTES=10485760       # ログファイルあたり10MB
-LOG_BACKUP_COUNT=5           # ローテーションログファイルを5つ保持
+LOG_MAX_BYTES=10485760       # 10MB per log file
+LOG_BACKUP_COUNT=5           # Keep 5 rotated log files
 ```
 
-### アカウントごとの設定
+### Per-Account Settings
 
-各アカウントについて（`ACCOUNT1_`を`ACCOUNT2_`、`ACCOUNT3_`などに置き換え）：
+For each account (replace `ACCOUNT1_` with `ACCOUNT2_`, `ACCOUNT3_`, etc.):
 
 ```bash
-# このアカウントを有効/無効化
+# Enable/disable this account
 ACCOUNT1_ENABLED=true
 
-# POP3設定（ソースメールアカウント）
+# POP3 Settings (source email account)
 ACCOUNT1_POP3_HOST=pop.example.com
-ACCOUNT1_POP3_PORT=995                # 通常SSL/TLSは995
+ACCOUNT1_POP3_PORT=995                # Usually 995 for SSL/TLS
 ACCOUNT1_POP3_USE_SSL=true
-ACCOUNT1_POP3_VERIFY_CERT=true        # 推奨: true
+ACCOUNT1_POP3_VERIFY_CERT=true        # Recommended: true
 ACCOUNT1_POP3_USERNAME=user@example.com
 ACCOUNT1_POP3_PASSWORD=your_password_here
 
-# Gmail API設定（宛先Gmailアカウント）
-ACCOUNT1_GMAIL_CREDENTIALS_FILE=credentials.json           # OAuth認証情報
-ACCOUNT1_GMAIL_TOKEN_FILE=tokens/token_account1.json       # トークン保存先
-ACCOUNT1_GMAIL_TARGET_EMAIL=your-gmail@gmail.com           # インポート先
+# Gmail API Settings (destination Gmail account)
+ACCOUNT1_GMAIL_CREDENTIALS_FILE=credentials.json           # OAuth credentials
+ACCOUNT1_GMAIL_TOKEN_FILE=tokens/token_account1.json       # Token storage
+ACCOUNT1_GMAIL_TARGET_EMAIL=your-gmail@gmail.com           # Import destination
+ACCOUNT1_GMAIL_LABEL_IDS=Label_123456                      # Optional: Gmail label IDs
 
-# 削除設定
-ACCOUNT1_DELETE_AFTER_FORWARD=false   # デバッグ: false, 本番: true
+# Deletion Settings
+ACCOUNT1_DELETE_AFTER_FORWARD=false   # Debug: false, Production: true
 
-# バックアップ設定
+# Backup Settings
 ACCOUNT1_BACKUP_ENABLED=true
 ACCOUNT1_BACKUP_DIR=backup/account1
 ACCOUNT1_BACKUP_RETENTION_DAYS=90
 ```
 
-### 重要な注意事項
+### Important Notes
 
-- **credentials.json**: 全アカウントで共有（アプリケーション全体で1ファイル）
-- **トークンファイル**: 宛先Gmailアカウントごとに1つ
-  - 例: Account 1とAccount 3が両方とも`your-gmail@gmail.com`にインポートする場合、同じトークンファイルを共有できます：
+- **credentials.json**: Shared by all accounts (one file for the entire application)
+- **Token files**: One per destination Gmail account
+  - Example: If Account 1 and Account 3 both import to `your-gmail@gmail.com`, they can share the same token file:
     ```bash
     ACCOUNT1_GMAIL_TOKEN_FILE=tokens/token_gmail_a.json
     ACCOUNT3_GMAIL_TOKEN_FILE=tokens/token_gmail_a.json
     ```
-- **DELETE_AFTER_FORWARD=false**: デバッグモード - 最新5件のメールのみ処理、サーバーから削除しない
-- **DELETE_AFTER_FORWARD=true**: 本番モード - インポート成功後、POP3サーバーからメールを削除
+- **DELETE_AFTER_FORWARD=false**: Debug mode - process only latest 5 emails, don't delete from server
+- **DELETE_AFTER_FORWARD=true**: Production mode - delete from POP3 server after successful import
 
-## Gmailフィルタ（オプション）
+## Gmail Labels (Optional)
 
-Gmailでインポートされたメールに自動的にラベルを付けるには：
+You can automatically apply Gmail labels to imported emails by setting `GMAIL_LABEL_IDS` per account. This is useful when importing from multiple POP3 accounts into the same Gmail, so you can tell which source each email came from.
 
-1. Gmail → 設定 → フィルタとブロック中のアドレス に移動
-2. 新しいフィルタを作成：
-   - **From**: `*@example.com`（またはソースドメイン）
-   - **操作**: ラベル「Forwarded/Example」を適用
-   - 「一致する会話にもフィルタを適用する」にチェック
-3. 他のPOP3アカウントについても繰り返し
+### Finding your Gmail Label IDs
 
-推奨ラベル構造：
+Gmail labels have internal IDs (e.g. `Label_123456`) that differ from the display name. To find them:
+
+1. Go to the [Gmail API labels.list reference](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.labels/list)
+2. Click **"Try this method"** (right-side panel)
+3. In the `userId` field, type `me`
+4. Click **"Execute"**
+5. Authorize with your Gmail account when prompted
+6. The response will list all your labels with their IDs:
+
+```json
+{
+  "labels": [
+    { "id": "INBOX", "name": "INBOX", "type": "system" },
+    { "id": "Label_5", "name": "Work", "type": "user" },
+    { "id": "Label_12", "name": "Personal", "type": "user" }
+  ]
+}
 ```
-Forwarded/
-├── Example1
-├── Example2
-└── Example3
+
+7. Copy the `id` value for the labels you want (e.g. `Label_5`)
+
+### Configuration
+
+Set the label ID(s) in your `.env` file:
+
+```bash
+# Single label
+ACCOUNT1_GMAIL_LABEL_IDS=Label_5
+
+# Multiple labels (comma-separated)
+ACCOUNT1_GMAIL_LABEL_IDS=Label_5,Label_12
 ```
 
-## 動作の仕組み
+### Example: Multiple accounts with different labels
 
-1. **POP3取得**: POP3サーバーに接続して新しいメールを取得
-2. **UIDL追跡**: UIDL状態をチェックして既に処理済みのメールをスキップ
-3. **ローカルバックアップ**: `.eml`ファイルとしてメールを保存（有効時）
-4. **Gmail APIインポート**: 元のRFC 822メールで`messages.import()`を呼び出し
-   - **labelIds指定**: `['INBOX', 'UNREAD']`で受信トレイに未読として配置
-   - labelIds指定なしの場合、メールはアーカイブ済み・既読として取り込まれます
-5. **UIDL記録**: インポート成功直後にメールを処理済みとしてマーク
-6. **サーバー削除**: POP3サーバーから削除（本番モードのみ）
-7. **クリーンアップ**: 古いバックアップとUIDLレコードを削除（デフォルト90日）
+```bash
+ACCOUNT_COUNT=3
 
-## OAuth認証の詳細
+# Personal email → labeled "Personal"
+ACCOUNT1_GMAIL_LABEL_IDS=Label_12
 
-### 初回実行
-- ブラウザが自動的に開きます
-- Gmailアカウントでサインイン
-- メールインポート権限を付与
-- トークンが`tokens/token_accountN.json`に保存
+# Work email → labeled "Work"
+ACCOUNT2_GMAIL_LABEL_IDS=Label_5
 
-### 2回目以降の実行
-- トークンが自動的にロード
-- 期限切れ時に自動更新
-- ブラウザ操作は不要
+# Newsletter account → labeled "Newsletters"
+ACCOUNT3_GMAIL_LABEL_IDS=Label_28
+```
 
-### 複数のGmail宛先
-複数のGmailアカウントにインポートする場合、一意の宛先メールごとにOAuthフローが1回実行されます。
+If `GMAIL_LABEL_IDS` is empty or not set, emails are imported with just `INBOX` and `UNREAD` (default behavior).
 
-## トラブルシューティング
+## How It Works
 
-### 「credentials.json not found」
-- Google Cloud ConsoleからOAuth認証情報をダウンロード
-- `credentials.json`にリネーム
-- プロジェクトルートディレクトリに配置
+1. **POP3 Retrieval**: Connect to POP3 server and retrieve new emails
+2. **UIDL Tracking**: Check UIDL state to skip already-processed emails
+3. **Local Backup**: Save email as `.eml` file (if enabled)
+4. **Gmail API Import**: Call `messages.import()` with original RFC 822 email
+   - **labelIds specification**: `['INBOX', 'UNREAD']` places email in inbox as unread
+   - Without labelIds specification, emails will be imported as archived and read
+5. **UIDL Recording**: Mark email as processed immediately after successful import
+6. **Server Deletion**: Delete from POP3 server (production mode only)
+7. **Cleanup**: Delete old backups and UIDL records (default 90 days)
 
-### 「OAuth authentication failed」
-- GmailアドレスがGoogle Cloud Consoleのテストユーザーに追加されているか確認
-- OAuthスコープが正しいか確認: `https://www.googleapis.com/auth/gmail.insert`
-- トークンファイルを削除して再認証を試行
+## OAuth Authentication Details
 
-### 「Gmail API error: 403」
-- Gmailアドレスがテストユーザーリストにありません
-- Google Cloud Console → OAuth同意画面 → テストユーザー に追加
+### First Run
+- Browser opens automatically
+- Sign in with Gmail account
+- Grant email import permission
+- Token saved to `tokens/token_accountN.json`
 
-### 「POP3 connection failed」
-- ホスト、ポート、ユーザー名、パスワードを確認
-- メールプロバイダーでPOP3が有効になっているか確認
-- 一部のプロバイダーは通常のパスワードの代わりに「アプリパスワード」が必要
+### Subsequent Runs
+- Token loaded automatically
+- Auto-refresh when expired
+- No browser interaction needed
 
-## セキュリティ
+### Multiple Gmail Destinations
+When importing to multiple Gmail accounts, the OAuth flow runs once for each unique destination email.
 
-- OAuthトークンは`600`権限で保存（所有者の読み取り/書き込みのみ）
-- パスワードはログに保存されません（`***`でマスク）
-- メールアドレスはログで部分的にマスク（`u***@example.com`）
-- `.gitignore`がすべての機密ファイルを除外するよう設定：
+## Troubleshooting
+
+### "credentials.json not found"
+- Download OAuth credentials from Google Cloud Console
+- Rename to `credentials.json`
+- Place in project root directory
+
+### "OAuth authentication failed"
+- Verify Gmail address is added to Test Users in Google Cloud Console
+- Verify OAuth scope is correct: `https://www.googleapis.com/auth/gmail.insert`
+- Try deleting token file and re-authenticating
+
+### "Gmail API error: 403"
+- Gmail address is not in the test users list
+- Add it in Google Cloud Console → OAuth consent screen → Test users
+
+### "POP3 connection failed"
+- Verify host, port, username, and password
+- Verify POP3 is enabled in your email provider
+- Some providers require "app passwords" instead of regular passwords
+
+## Security
+
+- OAuth tokens stored with `600` permissions (owner read/write only)
+- Passwords never saved in logs (masked with `***`)
+- Email addresses partially masked in logs (`u***@example.com`)
+- `.gitignore` configured to exclude all sensitive files:
   - `.env`
   - `credentials.json`
   - `tokens/`
   - `state/`
   - `backup/`
 
-## ログ
+## Logs
 
-ログは`logs/pop3_gmail_importer.log`に自動ローテーションで保存：
-- 最大サイズ: ファイルあたり10MB
-- 保持: ローテーションファイル5つ
-- フォーマット: `YYYY-MM-DD HH:MM:SS - LEVEL - Message`
+Logs are saved to `logs/pop3_gmail_importer.log` with automatic rotation:
+- Max size: 10MB per file
+- Retention: 5 rotated files
+- Format: `YYYY-MM-DD HH:MM:SS - LEVEL - Message`
 
-## ファイル構造
+## File Structure
 
 ```
 pop3_gmail_importer/
-├── .env                     # 設定ファイル（gitに含まれない）
-├── .env.example             # 設定テンプレート
-├── credentials.json         # OAuth認証情報（gitに含まれない）
-├── main.py                  # メインプログラム
-├── test_connection.py       # 接続テスター
-├── requirements.txt         # Python依存関係
-├── README.md                # このファイル（日本語）
-├── README_EN.md             # 英語版README
-├── tokens/                  # OAuthトークン（gitに含まれない）
+├── .env                     # Configuration file (not in git)
+├── .env.example             # Configuration template
+├── credentials.json         # OAuth credentials (not in git)
+├── main.py                  # Main program
+├── test_connection.py       # Connection tester
+├── requirements.txt         # Python dependencies
+├── README.md                # This file (Japanese)
+├── README_EN.md             # English README
+├── tokens/                  # OAuth tokens (not in git)
 │   ├── token_account1.json
 │   └── token_account2.json
-├── state/                   # UIDL状態ファイル（gitに含まれない）
+├── state/                   # UIDL state files (not in git)
 │   ├── account1_uidl.jsonl
 │   └── account2_uidl.jsonl
-├── backup/                  # メールバックアップ（gitに含まれない）
+├── backup/                  # Email backups (not in git)
 │   ├── account1/
 │   └── account2/
-└── logs/                    # ログファイル（gitに含まれない）
+└── logs/                    # Log files (not in git)
     └── pop3_gmail_importer.log
 ```
 
-## ライセンス
+## License
 
-このプロジェクトは個人使用向けに「現状のまま」提供されます。
+This project is provided "as is" for personal use.
 
-## サポート
+## Support
 
-問題や質問については、以下を確認してください：
-1. このREADME
-2. 詳細仕様については`requirements.md`
-3. `logs/pop3_gmail_importer.log`のログファイル
+For issues or questions, please refer to:
+1. This README
+2. `requirements.md` for detailed specifications
+3. Log file at `logs/pop3_gmail_importer.log`
