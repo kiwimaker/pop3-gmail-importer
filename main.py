@@ -17,6 +17,7 @@ import base64
 import signal
 import logging
 import poplib
+poplib._MAXLINE = 1024 * 1024  # 1MB max line length (default 2048 bytes is too small)
 import hashlib
 import threading
 from datetime import datetime, timedelta
