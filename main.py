@@ -190,7 +190,7 @@ def get_gmail_service(account_num, credentials_file, token_file, target_email):
         return None
 
 
-def import_to_gmail(service, raw_email, account_num, target_email):
+def import_to_gmail(service, raw_email, account_num, target_email, extra_label_ids=None):
     """
     Import email to Gmail using messages.import API.
 
@@ -199,6 +199,7 @@ def import_to_gmail(service, raw_email, account_num, target_email):
         raw_email: Raw email bytes (RFC 822 format)
         account_num: Account number for logging
         target_email: Target Gmail address for logging
+        extra_label_ids: Optional list of additional Gmail label IDs to apply
 
     Returns:
         True if successful, False otherwise
@@ -207,13 +208,17 @@ def import_to_gmail(service, raw_email, account_num, target_email):
         # Encode email to base64url
         encoded_message = base64.urlsafe_b64encode(raw_email).decode('utf-8')
 
+        # Build label list
+        label_ids = ['INBOX', 'UNREAD']
+        if extra_label_ids:
+            label_ids.extend(extra_label_ids)
+
         # Call messages.import API
-        # labelIds ensures emails appear as UNREAD in INBOX (not archived/read)
         message = service.users().messages().import_(
             userId='me',
             body={
                 'raw': encoded_message,
-                'labelIds': ['INBOX', 'UNREAD']
+                'labelIds': label_ids
             },
             internalDateSource='dateHeader'  # Preserve original date
         ).execute()
@@ -428,6 +433,7 @@ def process_account(account_num):
         'gmail_credentials_file': os.getenv(f"{prefix}GMAIL_CREDENTIALS_FILE"),
         'gmail_token_file': os.getenv(f"{prefix}GMAIL_TOKEN_FILE"),
         'gmail_target_email': os.getenv(f"{prefix}GMAIL_TARGET_EMAIL"),
+        'gmail_label_ids': [l.strip() for l in os.getenv(f"{prefix}GMAIL_LABEL_IDS", '').split(',') if l.strip()],
         'delete_after_forward': get_env_bool(f"{prefix}DELETE_AFTER_FORWARD", False),
         'backup_enabled': get_env_bool(f"{prefix}BACKUP_ENABLED", True),
         'backup_dir': os.getenv(f"{prefix}BACKUP_DIR"),
@@ -554,7 +560,8 @@ def process_account(account_num):
                     gmail_service,
                     raw_email,
                     account_num,
-                    config['gmail_target_email']
+                    config['gmail_target_email'],
+                    extra_label_ids=config['gmail_label_ids']
                 )
 
                 if not success:

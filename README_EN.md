@@ -140,6 +140,7 @@ ACCOUNT1_POP3_PASSWORD=your_password_here
 ACCOUNT1_GMAIL_CREDENTIALS_FILE=credentials.json           # OAuth credentials
 ACCOUNT1_GMAIL_TOKEN_FILE=tokens/token_account1.json       # Token storage
 ACCOUNT1_GMAIL_TARGET_EMAIL=your-gmail@gmail.com           # Import destination
+ACCOUNT1_GMAIL_LABEL_IDS=Label_123456                      # Optional: Gmail label IDs
 
 # Deletion Settings
 ACCOUNT1_DELETE_AFTER_FORWARD=false   # Debug: false, Production: true
@@ -162,24 +163,61 @@ ACCOUNT1_BACKUP_RETENTION_DAYS=90
 - **DELETE_AFTER_FORWARD=false**: Debug mode - process only latest 5 emails, don't delete from server
 - **DELETE_AFTER_FORWARD=true**: Production mode - delete from POP3 server after successful import
 
-## Gmail Filters (Optional)
+## Gmail Labels (Optional)
 
-To automatically label imported emails in Gmail:
+You can automatically apply Gmail labels to imported emails by setting `GMAIL_LABEL_IDS` per account. This is useful when importing from multiple POP3 accounts into the same Gmail, so you can tell which source each email came from.
 
-1. Go to Gmail → Settings → Filters and Blocked Addresses
-2. Create a new filter:
-   - **From**: `*@example.com` (or your source domain)
-   - **Action**: Apply label "Forwarded/Example"
-   - Check "Also apply filter to matching conversations"
-3. Repeat for other POP3 accounts
+### Finding your Gmail Label IDs
 
-Recommended label structure:
+Gmail labels have internal IDs (e.g. `Label_123456`) that differ from the display name. To find them:
+
+1. Go to the [Gmail API labels.list reference](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.labels/list)
+2. Click **"Try this method"** (right-side panel)
+3. In the `userId` field, type `me`
+4. Click **"Execute"**
+5. Authorize with your Gmail account when prompted
+6. The response will list all your labels with their IDs:
+
+```json
+{
+  "labels": [
+    { "id": "INBOX", "name": "INBOX", "type": "system" },
+    { "id": "Label_5", "name": "Work", "type": "user" },
+    { "id": "Label_12", "name": "Personal", "type": "user" }
+  ]
+}
 ```
-Forwarded/
-├── Example1
-├── Example2
-└── Example3
+
+7. Copy the `id` value for the labels you want (e.g. `Label_5`)
+
+### Configuration
+
+Set the label ID(s) in your `.env` file:
+
+```bash
+# Single label
+ACCOUNT1_GMAIL_LABEL_IDS=Label_5
+
+# Multiple labels (comma-separated)
+ACCOUNT1_GMAIL_LABEL_IDS=Label_5,Label_12
 ```
+
+### Example: Multiple accounts with different labels
+
+```bash
+ACCOUNT_COUNT=3
+
+# Personal email → labeled "Personal"
+ACCOUNT1_GMAIL_LABEL_IDS=Label_12
+
+# Work email → labeled "Work"
+ACCOUNT2_GMAIL_LABEL_IDS=Label_5
+
+# Newsletter account → labeled "Newsletters"
+ACCOUNT3_GMAIL_LABEL_IDS=Label_28
+```
+
+If `GMAIL_LABEL_IDS` is empty or not set, emails are imported with just `INBOX` and `UNREAD` (default behavior).
 
 ## How It Works
 

@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  pop3-gmail-importer:
+    build: .
+    container_name: pop3-gmail-importer
+    restart: unless-stopped
+    volumes:
+      # Config (read-only)
+      - ./config/.env:/app/.env:ro
+      - ./config/credentials.json:/app/credentials.json:ro
+      # Persistent data
+      - ./data/tokens:/app/tokens
+      - ./data/state:/app/state
+      - ./data/backup:/app/backup
+      - ./data/logs:/app/logs
+    environment:
+      - TZ=America/Mexico_City

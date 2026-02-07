@@ -39,3 +39,8 @@ Thumbs.db
 
 # Windows shortcuts
 *.lnk
+
+# Docker persistent data
+config/.env
+config/credentials.json
+data/
